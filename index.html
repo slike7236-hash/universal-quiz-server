@@ -1,69 +1,121 @@
 <!DOCTYPE html>
-<html lang="uz">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quiz Zone</title>
+    <title>English Vocabulary Quiz</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         body {
             font-family: system-ui, -apple-system, sans-serif;
-            background: #f8fafc; margin: 0; padding: 15px;
-            display: flex; justify-content: center; align-items: center; min-height: 90vh;
+            background: #f0f4f8; margin: 0; padding: 15px;
+            display: flex; justify-content: center; align-items: center; min-height: 95vh;
         }
-        .quiz-card { width: 100%; max-width: 500px; background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
-        .header { display: flex; justify-content: space-between; margin-bottom: 20px; color: #64748b; font-weight: bold; }
-        .question { font-size: 18px; font-weight: bold; margin-bottom: 20px; color: #1e293b; }
-        .options-list { display: flex; flex-direction: column; gap: 10px; }
-        .opt-btn { background: none; border: 2px solid #e2e8f0; border-radius: 8px; padding: 14px; text-align: left; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-        .opt-btn:hover { border-color: #2563eb; background: #f0f6ff; }
+        .quiz-card { 
+            width: 100%; max-width: 480px; background: white; border-radius: 16px; 
+            padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); position: relative;
+        }
+        .header { display: flex; justify-content: space-between; margin-bottom: 20px; color: #64748b; font-weight: bold; font-size: 14px; }
+        .timer-bar { width: 100%; height: 6px; background: #e2e8f0; border-radius: 3px; margin-bottom: 20px; overflow: hidden; }
+        .timer-progress { width: 100%; height: 100%; background: #3b82f6; transition: width 0.1s linear; }
+        .question { font-size: 20px; font-weight: 700; margin-bottom: 20px; color: #1e293b; text-align: center; }
+        .options-list { display: flex; flex-direction: column; gap: 12px; }
+        .opt-btn { 
+            background: none; border: 2px solid #e2e8f0; border-radius: 10px; padding: 14px; 
+            text-align: left; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.2s; color: #334155;
+        }
+        .opt-btn:hover { border-color: #3b82f6; background: #f0f6ff; }
         .opt-btn.correct { border-color: #10b981; background: #ecfdf5; color: #065f46; }
         .opt-btn.wrong { border-color: #ef4444; background: #fef2f2; color: #991b1b; }
         .disabled { pointer-events: none; }
+        
+        /* Leaderboard Style */
+        .leaderboard { margin-top: 20px; border-top: 2px dashed #e2e8f0; padding-top: 15px; }
+        .leaderboard h3 { margin: 0 0 10px 0; font-size: 16px; color: #1e293b; text-align: center; }
+        .score-row { display: flex; justify-content: space-between; padding: 6px 10px; background: #f8fafc; border-radius: 6px; margin-bottom: 5px; font-size: 14px; }
+        .score-row.current { background: #f0f6ff; border: 1px solid #bfdbfe; font-weight: bold; }
+        .input-group { display: flex; gap: 10px; margin-bottom: 15px; }
+        .name-input { flex: 1; padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; }
+        .save-btn { background: #3b82f6; color: white; border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-weight: bold; }
     </style>
-    
-    <!-- DIQQAT: Mana shu qator savollar turgan faylimizni bu yerga ulab beradi -->
+    <!-- Savollar faylini ulash -->
     <script src="questions.js"></script>
 </head>
 <body>
 
 <div class="quiz-card" id="quizBox">
     <div class="header">
-        <span id="qCount">Savol: 1/1</span>
-        <span id="scoreCount">Ball: 0</span>
+        <span id="qCount">Question: 1/1</span>
+        <span id="timerText"><i class="fa-regular fa-clock"></i> 15s</span>
     </div>
-    <div class="question" id="qText">Yuklanmoqda...</div>
+    <div class="timer-bar"><div class="timer-progress" id="timerProgress"></div></div>
+    <div class="question" id="qText">Loading...</div>
     <div class="options-list" id="optsBox"></div>
 </div>
 
 <script>
+    // TAYYOR OVOZLAR (Internet orqali yuklanadi)
+    const correctSound = new Audio("https://assets.mixkit.co/active_storage/sfx/2000/2000-84.wav");
+    const wrongSound = new Audio("https://assets.mixkit.co/active_storage/sfx/2003/2003-84.wav");
+    correctSound.volume = 0.5; wrongSound.volume = 0.5;
+
     const urlParams = new URLSearchParams(window.location.search);
     const lessonKey = urlParams.get('lesson') || "ess1_1";
 
-    // Agar savollar fayli yuklansa, o'sha bazadan oladi, aks holda bo'sh massiv
     const questions = (typeof quizDatabase !== 'undefined' && quizDatabase[lessonKey]) ? quizDatabase[lessonKey] : [];
     let currentIndex = 0;
     let score = 0;
+    
+    // TAYMER SOZLAMALARI
+    let timeLeft = 15; // Har bir savolga 15 sekund
+    let timerInterval;
+
+    function startTimer() {
+        timeLeft = 15;
+        document.getElementById("timerText").innerHTML = `<i class="fa-regular fa-clock"></i> ${timeLeft}s`;
+        document.getElementById("timerProgress").style.width = "100%";
+        document.getElementById("timerProgress").style.background = "#3b82f6";
+
+        clearInterval(timerInterval);
+        timerInterval = setInterval(() => {
+            timeLeft--;
+            document.getElementById("timerText").innerHTML = `<i class="fa-regular fa-clock"></i> ${timeLeft}s`;
+            document.getElementById("timerProgress").style.width = (timeLeft / 15) * 100 + "%";
+
+            if(timeLeft <= 5) {
+                document.getElementById("timerProgress").style.background = "#ef4444"; // Vaqt kam qolganda qizaradi
+            }
+
+            if(timeLeft <= 0) {
+                clearInterval(timerInterval);
+                wrongSound.play(); // Vaqt tugaganda xato ovozi chalinsa
+                highlightCorrectAnswer();
+                setTimeout(() => { currentIndex++; displayQuestion(); }, 1500);
+            }
+        }, 1000);
+    }
+
+    function highlightCorrectAnswer() {
+        document.querySelectorAll(".opt-btn").forEach(b => {
+            b.classList.add("disabled");
+            if(b.innerText === questions[currentIndex].a) b.classList.add("correct");
+        });
+    }
 
     function displayQuestion() {
         if (questions.length === 0) {
-            document.getElementById("quizBox").innerHTML = "<p style='text-align:center; color:red;'>Bu dars uchun testlar topilmadi.</p>";
+            document.getElementById("quizBox").innerHTML = "<p style='text-align:center; color:red;'>No tests found for this lesson.</p>";
             return;
         }
 
         if(currentIndex >= questions.length) {
-            document.getElementById("quizBox").innerHTML = `
-                <div style="text-align:center; padding: 20px 0;">
-                    <i class="fa-solid fa-trophy" style="font-size: 50px; color: #eab308; margin-bottom: 10px;"></i>
-                    <h2>Test Yakunlandi!</h2>
-                    <p>Siz ${questions.length} tadan <b>${score}</b> ta to'g'ri javob topdingiz.</p>
-                </div>`;
+            clearInterval(timerInterval);
+            showResults();
             return;
         }
 
         let currentQ = questions[currentIndex];
-        document.getElementById("qCount").innerText = `Savol: ${currentIndex + 1}/${questions.length}`;
-        document.getElementById("scoreCount").innerText = `Ball: ${score}`;
+        document.getElementById("qCount").innerText = `Question: ${currentIndex + 1}/${questions.length}`;
         document.getElementById("qText").innerText = currentQ.q;
 
         const box = document.getElementById("optsBox");
@@ -76,20 +128,84 @@
             btn.onclick = () => checkAnswer(btn, option, currentQ.a);
             box.appendChild(btn);
         });
+
+        startTimer();
     }
 
     function checkAnswer(btn, selected, correct) {
+        clearInterval(timerInterval);
         document.querySelectorAll(".opt-btn").forEach(b => b.classList.add("disabled"));
+        
         if(selected === correct) {
             btn.classList.add("correct");
+            correctSound.play(); // To'g'ri javob ovozi
             score++;
         } else {
             btn.classList.add("wrong");
+            wrongSound.play(); // Xato javob ovozi
             document.querySelectorAll(".opt-btn").forEach(b => {
                 if(b.innerText === correct) b.classList.add("correct");
             });
         }
         setTimeout(() => { currentIndex++; displayQuestion(); }, 1200);
+    }
+
+    function showResults() {
+        document.getElementById("quizBox").innerHTML = `
+            <div style="text-align:center; padding: 10px 0;">
+                <i class="fa-solid fa-trophy" style="font-size: 50px; color: #eab308; margin-bottom: 10px;"></i>
+                <h2>Quiz Completed!</h2>
+                <p>You scored <b>${score}</b> out of ${questions.length}.</p>
+                
+                <div class="input-group">
+                    <input type="text" id="playerName" class="name-input" placeholder="Enter your name" maxlength="15">
+                    <button class="save-btn" onclick="saveScore()">Save</button>
+                </div>
+
+                <div class="leaderboard">
+                    <h3>🏆 Leaderboard (Top 5)</h3>
+                    <div id="leaderboardRows"></div>
+                </div>
+            </div>`;
+        showLeaderboard();
+    }
+
+    function saveScore() {
+        const nameInput = document.getElementById("playerName");
+        const name = nameInput.value.trim() || "Anonymous";
+        
+        let leaderboardData = JSON.parse(localStorage.getItem(`leaderboard_${lessonKey}`)) || [];
+        leaderboardData.push({ name: name, score: score });
+        
+        // Saralash va Top 5 talikni olish
+        leaderboardData.sort((a, b) => b.score - a.score);
+        leaderboardData = leaderboardData.slice(0, 5);
+        
+        localStorage.setItem(`leaderboard_${lessonKey}`, JSON.stringify(leaderboardData));
+        nameInput.disabled = true;
+        document.querySelector(".save-btn").disabled = true;
+        
+        showLeaderboard(name, score);
+    }
+
+    function showLeaderboard(currentName = "", currentScore = -1) {
+        const rowsBox = document.getElementById("leaderboardRows");
+        let leaderboardData = JSON.parse(localStorage.getItem(`leaderboard_${lessonKey}`)) || [];
+        rowsBox.innerHTML = "";
+        
+        if(leaderboardData.length === 0) {
+            rowsBox.innerHTML = "<p style='color:#64748b; font-size:13px;'>No high scores yet. Be the first!</p>";
+            return;
+        }
+
+        leaderboardData.forEach((player, i) => {
+            let isCurrent = (player.name === currentName && player.score === currentScore);
+            rowsBox.innerHTML += `
+                <div class="score-row ${isCurrent ? 'current' : ''}">
+                    <span>${i + 1}. ${player.name}</span>
+                    <span>${player.score} pts</span>
+                </div>`;
+        });
     }
 
     displayQuestion();
