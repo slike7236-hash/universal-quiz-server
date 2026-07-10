@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz Zone</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: #f8fafc;
+            margin: 0; padding: 15px;
+            display: flex; justify-content: center; align-items: center;
+            min-height: 90vh;
+        }
+        .quiz-card {
+            width: 100%; max-width: 500px;
+            background: white; border-radius: 12px; padding: 20px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        }
+        .header { display: flex; justify-content: space-between; margin-bottom: 20px; color: #64748b; font-weight: bold; }
+        .question { font-size: 18px; font-weight: bold; margin-bottom: 20px; color: #1e293b; }
+        .options-list { display: flex; flex-direction: column; gap: 10px; }
+        .opt-btn {
+            background: none; border: 2px solid #e2e8f0; border-radius: 8px;
+            padding: 14px; text-align: left; font-size: 15px; font-weight: 600;
+            cursor: pointer; transition: all 0.2s;
+        }
+        .opt-btn:hover { border-color: #2563eb; background: #f0f6ff; }
+        .opt-btn.correct { border-color: #10b981; background: #ecfdf5; color: #065f46; }
+        .opt-btn.wrong { border-color: #ef4444; background: #fef2f2; color: #991b1b; }
+        .disabled { pointer-events: none; }
+    </style>
+</head>
+<body>
+
+<div class="quiz-card" id="quizBox">
+    <div class="header">
+        <span id="qCount">Savol: 1/1</span>
+        <span id="scoreCount">Ball: 0</span>
+    </div>
+    <div class="question" id="qText">Yuklanmoqda...</div>
+    <div class="options-list" id="optsBox"></div>
+</div>
+
+<script>
+    // URL orqali kelgan parametrni o'qiydi (Masalan: ?lesson=ess1_1)
+    const urlParams = new URLSearchParams(window.location.search);
+    const lessonKey = urlParams.get('lesson') || "ess1_1";
+
+    // TESTLAR BAZASI (Xohlagancha mavzu savollarini shu yerga qo'shib ketaverasiz)
+    const quizDatabase = {
+        "ess1_1": [
+            { q: "What is the translation of 'afraid'?", o: ["qo'rqqan", "xavfsiz", "aqlli", "jahli chiqqan"], a: "qo'rqqan" },
+            { q: "What is the translation of 'agree'?", o: ["va'da bermoq", "rozi bo'lmoq", "hujum qilmoq", "kelmoq"], a: "rozi bo'lmoq" },
+            { q: "What is the translation of 'clever'?", o: ["shafqatsiz", "yaxshi", "aqlli", "o'rta"], a: "aqlli" }
+        ],
+        "ess1_2": [
+            { q: "What is the translation of 'angry'?", o: ["badjahl", "hursand", "bexatar", "hiyla"], a: "badjahl" }
+        ]
+    };
+
+    const questions = quizDatabase[lessonKey] || quizDatabase["ess1_1"];
+    let currentIndex = 0;
+    let score = 0;
+
+    function displayQuestion() {
+        if(currentIndex >= questions.length) {
+            document.getElementById("quizBox").innerHTML = `
+                <div style="text-align:center; padding: 20px 0;">
+                    <i class="fa-solid fa-trophy" style="font-size: 50px; color: #eab308; margin-bottom: 10px;"></i>
+                    <h2>Test Yakunlandi!</h2>
+                    <p>Siz ${questions.length} tadan <b>${score}</b> ta to'g'ri javob topdingiz.</p>
+                </div>`;
+            return;
+        }
+
+        let currentQ = questions[currentIndex];
+        document.getElementById("qCount").innerText = `Savol: ${currentIndex + 1}/${questions.length}`;
+        document.getElementById("scoreCount").innerText = `Ball: ${score}`;
+        document.getElementById("qText").innerText = currentQ.q;
+
+        const box = document.getElementById("optsBox");
+        box.innerHTML = "";
+
+        currentQ.o.forEach(option => {
+            let btn = document.createElement("button");
+            btn.className = "opt-btn";
+            btn.innerText = option;
+            btn.onclick = () => checkAnswer(btn, option, currentQ.a);
+            box.appendChild(btn);
+        });
+    }
+
+    function checkAnswer(btn, selected, correct) {
+        document.querySelectorAll(".opt-btn").forEach(b => b.classList.add("disabled"));
+        if(selected === correct) {
+            btn.classList.add("correct");
+            score++;
+        } else {
+            btn.classList.add("wrong");
+            document.querySelectorAll(".opt-btn").forEach(b => {
+                if(b.innerText === correct) b.classList.add("correct");
+            });
+        }
+        setTimeout(() => { currentIndex++; displayQuestion(); }, 1200);
+    }
+
+    // Start
+    displayQuestion();
+</script>
+</body>
+</html>
