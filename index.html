@@ -29,35 +29,39 @@
         .opt-btn.wrong { border-color: #ef4444; background: #fef2f2; color: #991b1b; }
         .disabled { pointer-events: none; }
         
+        /* Start Screen & Form Style */
+        .start-screen, .result-screen { text-align: center; padding: 10px 0; }
+        .name-input { width: 80%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 10px; font-size: 16px; margin-bottom: 15px; text-align: center; outline: none; }
+        .name-input:focus { border-color: #3b82f6; }
+        .primary-btn { background: #3b82f6; color: white; border: none; padding: 12px 30px; border-radius: 10px; cursor: pointer; font-size: 16px; font-weight: bold; width: 85%; }
+        .primary-btn:hover { background: #2563eb; }
+
         /* Leaderboard Style */
-        .leaderboard { margin-top: 20px; border-top: 2px dashed #e2e8f0; padding-top: 15px; }
+        .leaderboard { margin-top: 25px; border-top: 2px dashed #e2e8f0; padding-top: 15px; }
         .leaderboard h3 { margin: 0 0 10px 0; font-size: 16px; color: #1e293b; text-align: center; }
-        .score-row { display: flex; justify-content: space-between; padding: 6px 10px; background: #f8fafc; border-radius: 6px; margin-bottom: 5px; font-size: 14px; }
-        .score-row.current { background: #f0f6ff; border: 1px solid #bfdbfe; font-weight: bold; }
-        .input-group { display: flex; gap: 10px; margin-bottom: 15px; }
-        .name-input { flex: 1; padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; }
-        .save-btn { background: #3b82f6; color: white; border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .score-row { display: flex; justify-content: space-between; padding: 8px 12px; background: #f8fafc; border-radius: 8px; margin-bottom: 5px; font-size: 14px; }
+        .score-row.current { background: #ecfdf5; border: 1px solid #a7f3d0; font-weight: bold; }
     </style>
-    <!-- Savollar faylini ulash -->
     <script src="questions.js"></script>
 </head>
 <body>
 
 <div class="quiz-card" id="quizBox">
-    <div class="header">
-        <span id="qCount">Question: 1/1</span>
-        <span id="timerText"><i class="fa-regular fa-clock"></i> 15s</span>
+    <!-- BOSHILISHIDA SHU EKRAN CHIQADI -->
+    <div class="start-screen" id="startScreen">
+        <i class="fa-solid fa-graduation-cap" style="font-size: 60px; color: #3b82f6; margin-bottom: 15px;"></i>
+        <h2>Welcome to Vocabulary Quiz</h2>
+        <p style="color: #64748b; margin-bottom: 20px;">Test your knowledge and secure your place on the leaderboard!</p>
+        <input type="text" id="playerName" class="name-input" placeholder="Enter your name" maxlength="15">
+        <button class="primary-btn" onclick="startQuiz()">Start Quiz</button>
     </div>
-    <div class="timer-bar"><div class="timer-progress" id="timerProgress"></div></div>
-    <div class="question" id="qText">Loading...</div>
-    <div class="options-list" id="optsBox"></div>
 </div>
 
 <script>
-    // TAYYOR OVOZLAR (Internet orqali yuklanadi)
-    const correctSound = new Audio("https://assets.mixkit.co/active_storage/sfx/2000/2000-84.wav");
-    const wrongSound = new Audio("https://assets.mixkit.co/active_storage/sfx/2003/2003-84.wav");
-    correctSound.volume = 0.5; wrongSound.volume = 0.5;
+    // ISHONCHLI OVOZ HAVOLALARI (Audio fayllar)
+    const correctSound = new Audio("https://cdn.pixabay.com/audio/2022/03/15/audio_5022cc21ce.mp3");
+    const wrongSound = new Audio("https://cdn.pixabay.com/audio/2022/03/10/audio_c3619989a3.mp3");
+    const winSound = new Audio("https://cdn.pixabay.com/audio/2021/08/04/audio_062ce552e8.mp3");
 
     const urlParams = new URLSearchParams(window.location.search);
     const lessonKey = urlParams.get('lesson') || "ess1_1";
@@ -65,10 +69,33 @@
     const questions = (typeof quizDatabase !== 'undefined' && quizDatabase[lessonKey]) ? quizDatabase[lessonKey] : [];
     let currentIndex = 0;
     let score = 0;
+    let playerName = "Anonymous";
     
-    // TAYMER SOZLAMALARI
-    let timeLeft = 15; // Har bir savolga 15 sekund
+    let timeLeft = 15;
     let timerInterval;
+
+    // OVOZLARNI ISHGA TUSHIRISH VA TESTNI BOSHLASH
+    function startQuiz() {
+        const inputName = document.getElementById("playerName").value.trim();
+        if(inputName) playerName = inputName;
+
+        // Brauzer blokirovkasini ochish uchun ovozlarni bir marta "bepusht" chalib olamiz
+        correctSound.play().then(() => { correctSound.pause(); correctSound.currentTime = 0; });
+        wrongSound.play().then(() => { wrongSound.pause(); wrongSound.currentTime = 0; });
+
+        // Test interfeysini qurish
+        document.getElementById("quizBox").innerHTML = `
+            <div class="header">
+                <span id="qCount">Question: 1/1</span>
+                <span id="timerText"><i class="fa-regular fa-clock"></i> 15s</span>
+            </div>
+            <div class="timer-bar"><div class="timer-progress" id="timerProgress"></div></div>
+            <div class="question" id="qText">Loading...</div>
+            <div class="options-list" id="optsBox"></div>
+        `;
+        
+        displayQuestion();
+    }
 
     function startTimer() {
         timeLeft = 15;
@@ -82,13 +109,11 @@
             document.getElementById("timerText").innerHTML = `<i class="fa-regular fa-clock"></i> ${timeLeft}s`;
             document.getElementById("timerProgress").style.width = (timeLeft / 15) * 100 + "%";
 
-            if(timeLeft <= 5) {
-                document.getElementById("timerProgress").style.background = "#ef4444"; // Vaqt kam qolganda qizaradi
-            }
+            if(timeLeft <= 5) document.getElementById("timerProgress").style.background = "#ef4444";
 
             if(timeLeft <= 0) {
                 clearInterval(timerInterval);
-                wrongSound.play(); // Vaqt tugaganda xato ovozi chalinsa
+                try { wrongSound.play(); } catch(e){}
                 highlightCorrectAnswer();
                 setTimeout(() => { currentIndex++; displayQuestion(); }, 1500);
             }
@@ -104,13 +129,13 @@
 
     function displayQuestion() {
         if (questions.length === 0) {
-            document.getElementById("quizBox").innerHTML = "<p style='text-align:center; color:red;'>No tests found for this lesson.</p>";
+            document.getElementById("quizBox").innerHTML = "<p style='text-align:center; color:red;'>No tests found.</p>";
             return;
         }
 
         if(currentIndex >= questions.length) {
             clearInterval(timerInterval);
-            showResults();
+            saveAndShowResults();
             return;
         }
 
@@ -138,11 +163,11 @@
         
         if(selected === correct) {
             btn.classList.add("correct");
-            correctSound.play(); // To'g'ri javob ovozi
+            try { correctSound.play(); } catch(e){}
             score++;
         } else {
             btn.classList.add("wrong");
-            wrongSound.play(); // Xato javob ovozi
+            try { wrongSound.play(); } catch(e){}
             document.querySelectorAll(".opt-btn").forEach(b => {
                 if(b.innerText === correct) b.classList.add("correct");
             });
@@ -150,56 +175,40 @@
         setTimeout(() => { currentIndex++; displayQuestion(); }, 1200);
     }
 
-    function showResults() {
+    function saveAndShowResults() {
+        // Natijani avtomatik saqlash
+        let leaderboardData = JSON.parse(localStorage.getItem(`leaderboard_${lessonKey}`)) || [];
+        leaderboardData.push({ name: playerName, score: score });
+        leaderboardData.sort((a, b) => b.score - a.score);
+        leaderboardData = leaderboardData.slice(0, 5);
+        localStorage.setItem(`leaderboard_${lessonKey}`, JSON.stringify(leaderboardData));
+
+        // Yakuniy qism ovozi
+        try { winSound.play(); } catch(e){}
+
         document.getElementById("quizBox").innerHTML = `
-            <div style="text-align:center; padding: 10px 0;">
+            <div class="result-screen">
                 <i class="fa-solid fa-trophy" style="font-size: 50px; color: #eab308; margin-bottom: 10px;"></i>
                 <h2>Quiz Completed!</h2>
-                <p>You scored <b>${score}</b> out of ${questions.length}.</p>
+                <p>Well done, <b>${playerName}</b>! You scored <b>${score}</b> out of ${questions.length}.</p>
                 
-                <div class="input-group">
-                    <input type="text" id="playerName" class="name-input" placeholder="Enter your name" maxlength="15">
-                    <button class="save-btn" onclick="saveScore()">Save</button>
-                </div>
-
                 <div class="leaderboard">
                     <h3>🏆 Leaderboard (Top 5)</h3>
                     <div id="leaderboardRows"></div>
                 </div>
+                <button class="primary-btn" style="margin-top:15px; width:100%;" onclick="location.reload()">Try Again</button>
             </div>`;
+        
         showLeaderboard();
     }
 
-    function saveScore() {
-        const nameInput = document.getElementById("playerName");
-        const name = nameInput.value.trim() || "Anonymous";
-        
-        let leaderboardData = JSON.parse(localStorage.getItem(`leaderboard_${lessonKey}`)) || [];
-        leaderboardData.push({ name: name, score: score });
-        
-        // Saralash va Top 5 talikni olish
-        leaderboardData.sort((a, b) => b.score - a.score);
-        leaderboardData = leaderboardData.slice(0, 5);
-        
-        localStorage.setItem(`leaderboard_${lessonKey}`, JSON.stringify(leaderboardData));
-        nameInput.disabled = true;
-        document.querySelector(".save-btn").disabled = true;
-        
-        showLeaderboard(name, score);
-    }
-
-    function showLeaderboard(currentName = "", currentScore = -1) {
+    function showLeaderboard() {
         const rowsBox = document.getElementById("leaderboardRows");
         let leaderboardData = JSON.parse(localStorage.getItem(`leaderboard_${lessonKey}`)) || [];
         rowsBox.innerHTML = "";
         
-        if(leaderboardData.length === 0) {
-            rowsBox.innerHTML = "<p style='color:#64748b; font-size:13px;'>No high scores yet. Be the first!</p>";
-            return;
-        }
-
         leaderboardData.forEach((player, i) => {
-            let isCurrent = (player.name === currentName && player.score === currentScore);
+            let isCurrent = (player.name === playerName && player.score === score);
             rowsBox.innerHTML += `
                 <div class="score-row ${isCurrent ? 'current' : ''}">
                     <span>${i + 1}. ${player.name}</span>
@@ -207,8 +216,6 @@
                 </div>`;
         });
     }
-
-    displayQuestion();
 </script>
 </body>
 </html>
