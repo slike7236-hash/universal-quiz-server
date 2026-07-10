@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Embeddable Quiz Player</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --success: #10b981;
+            --danger: #ef4444;
+            --bg: #f8fafc;
+        }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: var(--bg);
+            margin: 0; padding: 15px;
+            display: flex; justify-content: center; align-items: center;
+            min-height: 90vh;
+        }
+        .quiz-container {
+            width: 100%; max-width: 500px;
+            background: white; border-radius: 12px; padding: 20px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        }
+        .header { display: flex; justify-content: space-between; margin-bottom: 20px; color: #64748b; font-weight: bold; }
+        .question { font-size: 18px; font-weight: bold; margin-bottom: 20px; color: #1e293b; }
+        .options-list { display: flex; flex-direction: column; gap: 10px; }
+        .opt-btn {
+            background: none; border: 2px solid #e2e8f0; border-radius: 8px;
+            padding: 14px; text-align: left; font-size: 15px; font-weight: 600;
+            cursor: pointer; transition: all 0.2s; display: flex; justify-content: space-between;
+        }
+        .opt-btn:hover { border-color: var(--primary); background: #f0f6ff; }
+        .opt-btn.correct { border-color: var(--success); background: #ecfdf5; color: #065f46; }
+        .opt-btn.wrong { border-color: var(--danger); background: #fef2f2; color: #991b1b; }
+        .disabled { pointer-events: none; }
+        .result-screen { text-align: center; }
+    </style>
+</head>
+<body>
+
+<div class="quiz-container" id="quizContainer">
+    <div id="loading">Loading standard secure quiz engine...</div>
+</div>
+
+<script>
+    const API_BASE_URL = "http://127.0.0.1:8000/api"; // O'zingizning serveringiz manzili
+    const urlParams = new URLSearchParams(window.location.search);
+    const quizKey = urlParams.get('key') || "ess1_unit1";
+
+    let questions = [];
+    let currentIndex = 0;
+    let score = 0;
+
+    async def fetchQuiz() {
+        try {
+            const response = await fetch(`${API_BASE_URL}/quizzes/${quizKey}`);
+            if(!response.ok) throw new Error("Quiz topilmadi");
+            const data = await response.json();
+            questions = data.questions;
+            renderQuestion();
+        } catch (error) {
+            document.getElementById("quizContainer").innerHTML = `<p style="color:var(--danger); text-align:center;">Xatolik: Test yuklanmadi!</p>`;
+        }
+    }
+
+    function renderQuestion() {
+        const container = document.getElementById("quizContainer");
+        if(currentIndex >= questions.length) {
+            showResults();
+            return;
+        }
+        let q = questions[currentIndex];
+        container.innerHTML = `
+            <div class="header">
+                <span>Savol: ${currentIndex + 1}/${questions.length}</span>
+                <span>Ball: ${score}</span>
+            </div>
+            <div class="question">${q.question}</div>
+            <div class="options-list" id="opts"></div>
+        `;
+        const optsDiv = document.getElementById("opts");
+        q.options.forEach(opt => {
+            let btn = document.createElement("button");
+            btn.className = "opt-btn";
+            btn.innerText = opt;
+            btn.onclick = () => checkAnswer(btn, opt, q.answer);
+            optsDiv.appendChild(btn);
+        });
+    }
+
+    function checkAnswer(btn, selected, correct) {
+        document.querySelectorAll(".opt-btn").forEach(b => b.classList.add("disabled"));
+        if(selected === correct) {
+            btn.classList.add("correct");
+            score++;
+        } else {
+            btn.classList.add("wrong");
+            document.querySelectorAll(".opt-btn").forEach(b => {
+                if(b.innerText === correct) b.classList.add("correct");
+            });
+        }
+        setTimeout(() => { currentIndex++; renderQuestion(); }, 1200);
+    }
+
+    function showResults() {
+        const container = document.getElementById("quizContainer");
+        container.innerHTML = `
+            <div class="result-screen">
+                <i class="fa-solid fa-trophy" style="font-size: 50px; color: #eab308;"></i>
+                <h2>Test Yakunlandi!</h2>
+                <p>Siz jami <b>${questions.length}</b> tadan <b>${score}</b> ta to'g'ri javob topdingiz.</p>
+                <button onclick="location.reload()" style="padding:10px 20px; background:var(--primary); color:white; border:none; border-radius:6px; cursor:pointer;">Qayta urinish</button>
+            </div>
+        `;
+    }
+
+    fetchQuiz();
+</script>
+</body>
+</html>
