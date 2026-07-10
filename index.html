@@ -1,50 +1,262 @@
-// INTERNETSIZ, BLOKLANMAYDIGAN RAQAMLI OVOZ GENERATORI
-function playSound(type) {
-    try {
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        if (!AudioContext) return;
-        const ctx = new AudioContext();
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>English Vocabulary Quiz</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: #f0f4f8; margin: 0; padding: 15px;
+            display: flex; justify-content: center; align-items: center; min-height: 95vh;
+        }
+        .quiz-card { 
+            width: 100%; max-width: 480px; background: white; border-radius: 16px; 
+            padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); position: relative;
+        }
+        .header { display: flex; justify-content: space-between; margin-bottom: 20px; color: #64748b; font-weight: bold; font-size: 14px; }
+        .timer-bar { width: 100%; height: 6px; background: #e2e8f0; border-radius: 3px; margin-bottom: 20px; overflow: hidden; }
+        .timer-progress { width: 100%; height: 100%; background: #3b82f6; transition: width 0.1s linear; }
+        .question { font-size: 20px; font-weight: 700; margin-bottom: 20px; color: #1e293b; text-align: center; }
+        .options-list { display: flex; flex-direction: column; gap: 12px; }
+        .opt-btn { 
+            background: none; border: 2px solid #e2e8f0; border-radius: 10px; padding: 14px; 
+            text-align: left; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.2s; color: #334155;
+        }
+        .opt-btn:hover { border-color: #3b82f6; background: #f0f6ff; }
+        .opt-btn.correct { border-color: #10b981; background: #ecfdf5; color: #065f46; }
+        .opt-btn.wrong { border-color: #ef4444; background: #fef2f2; color: #991b1b; }
+        .disabled { pointer-events: none; }
         
-        osc.connect(gain);
-        gain.connect(ctx.destination);
+        .start-screen, .result-screen { text-align: center; padding: 10px 0; }
+        .name-input { width: 80%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 10px; font-size: 16px; margin-bottom: 15px; text-align: center; outline: none; }
+        .name-input:focus { border-color: #3b82f6; }
+        .primary-btn { background: #3b82f6; color: white; border: none; padding: 12px 30px; border-radius: 10px; cursor: pointer; font-size: 16px; font-weight: bold; width: 85%; }
+        .primary-btn:hover { background: #2563eb; }
+
+        /* Leaderboard Style */
+        .leaderboard { margin-top: 25px; border-top: 2px dashed #e2e8f0; padding-top: 15px; }
+        .leaderboard h3 { margin: 0 0 10px 0; font-size: 16px; color: #1e293b; text-align: center; }
+        .score-row { display: flex; justify-content: space-between; padding: 8px 12px; background: #f8fafc; border-radius: 8px; margin-bottom: 5px; font-size: 14px; }
+        .score-row.current { background: #ecfdf5; border: 1px solid #a7f3d0; font-weight: bold; }
+    </style>
+    <script src="questions.js"></script>
+</head>
+<body>
+
+<div class="quiz-card" id="quizBox">
+    <div class="start-screen" id="startScreen">
+        <i class="fa-solid fa-graduation-cap" style="font-size: 60px; color: #3b82f6; margin-bottom: 15px;"></i>
+        <h2>Welcome to Vocabulary Quiz</h2>
+        <p style="color: #64748b; margin-bottom: 20px;">Test your speed and accuracy to lead the board!</p>
+        <input type="text" id="playerName" class="name-input" placeholder="Enter your name" maxlength="15">
+        <button class="primary-btn" onclick="startQuiz()">Start Quiz</button>
+    </div>
+</div>
+
+<script>
+    // NETSIZ/BLOKLANMAYDIGAN RAQAMLI OVOZ TIZIMI
+    function playSound(type) {
+        try {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContext) return;
+            const ctx = new AudioContext();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain); gain.connect(ctx.destination);
+            
+            if (type === 'correct') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(523.25, ctx.currentTime);
+                osc.frequency.setValueAtTime(659.25, ctx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.3, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+                osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.3);
+            } else if (type === 'wrong') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(150, ctx.currentTime);
+                osc.frequency.linearRampToValueAtTime(100, ctx.currentTime + 0.2);
+                gain.gain.setValueAtTime(0.2, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25);
+                osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.25);
+            } else if (type === 'win') {
+                const notes = [523.25, 659.25, 783.99];
+                notes.forEach((freq, index) => {
+                    const o = ctx.createOscillator(); const g = ctx.createGain();
+                    o.connect(g); g.connect(ctx.destination); o.type = 'sine';
+                    o.frequency.setValueAtTime(freq, ctx.currentTime + (index * 0.15));
+                    g.gain.setValueAtTime(0.2, ctx.currentTime + (index * 0.15));
+                    g.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + (index * 0.15) + 0.2);
+                    o.start(ctx.currentTime + (index * 0.15)); o.stop(ctx.currentTime + (index * 0.15) + 0.2);
+                });
+            }
+        } catch (e) { console.log(e); }
+    }
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const lessonKey = urlParams.get('lesson') || "ess1_1";
+
+    const questions = (typeof quizDatabase !== 'undefined' && quizDatabase[lessonKey]) ? quizDatabase[lessonKey] : [];
+    let currentIndex = 0;
+    let score = 0;
+    let playerName = "Anonymous";
+    
+    // VAQT OʻZGARUVCHILARI
+    let timeLeft = 15;
+    let timerInterval;
+    let totalTimeSpent = 0; // O'quvchi jami sarflagan vaqt (soniyalarda)
+
+    function startQuiz() {
+        const inputName = document.getElementById("playerName").value.trim();
+        if(inputName) playerName = inputName;
+
+        // Ovoz blokirovkasini ochish testi
+        playSound('correct');
+
+        document.getElementById("quizBox").innerHTML = `
+            <div class="header">
+                <span id="qCount">Question: 1/1</span>
+                <span id="timerText"><i class="fa-regular fa-clock"></i> 15s</span>
+            </div>
+            <div class="timer-bar"><div class="timer-progress" id="timerProgress"></div></div>
+            <div class="question" id="qText">Loading...</div>
+            <div class="options-list" id="optsBox"></div>
+        `;
         
-        if (type === 'correct') {
-            // To'g'ri javob uchun: Yoqimli va tez ko'tariluvchi "ding" ovozi
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(523.25, ctx.currentTime); // C5 notasi
-            osc.frequency.setValueAtTime(659.25, ctx.currentTime + 0.1); // E5 notasi
-            gain.gain.setValueAtTime(0.3, ctx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
-            osc.start(ctx.currentTime);
-            osc.stop(ctx.currentTime + 0.3);
-        } else if (type === 'wrong') {
-            // Xato javob uchun: Past va yoqimsizroq "bup" ovozi
-            osc.type = 'sawtooth';
-            osc.frequency.setValueAtTime(150, ctx.currentTime); 
-            osc.frequency.linearRampToValueAtTime(100, ctx.currentTime + 0.2);
-            gain.gain.setValueAtTime(0.2, ctx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25);
-            osc.start(ctx.currentTime);
-            osc.stop(ctx.currentTime + 0.25);
-        } else if (type === 'win') {
-            // O'yin tugaganda: G'alaba ohangi (3 ta ketma-ket qisqa nota)
-            const notes = [523.25, 659.25, 783.99]; // C5, E5, G5 notalari
-            notes.forEach((freq, index) => {
-                const o = ctx.createOscillator();
-                const g = ctx.createGain();
-                o.connect(g);
-                g.connect(ctx.destination);
-                o.type = 'sine';
-                o.frequency.setValueAtTime(freq, ctx.currentTime + (index * 0.15));
-                g.gain.setValueAtTime(0.2, ctx.currentTime + (index * 0.15));
-                g.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + (index * 0.15) + 0.2);
-                o.start(ctx.currentTime + (index * 0.15));
-                o.stop(ctx.currentTime + (index * 0.15) + 0.2);
+        displayQuestion();
+    }
+
+    function startTimer() {
+        timeLeft = 15;
+        document.getElementById("timerText").innerHTML = `<i class="fa-regular fa-clock"></i> ${timeLeft}s`;
+        document.getElementById("timerProgress").style.width = "100%";
+        document.getElementById("timerProgress").style.background = "#3b82f6";
+
+        clearInterval(timerInterval);
+        timerInterval = setInterval(() => {
+            timeLeft--;
+            totalTimeSpent++; // Har bir soniyada umumiy taymer oshib boradi
+            
+            document.getElementById("timerText").innerHTML = `<i class="fa-regular fa-clock"></i> ${timeLeft}s`;
+            document.getElementById("timerProgress").style.width = (timeLeft / 15) * 100 + "%";
+
+            if(timeLeft <= 5) document.getElementById("timerProgress").style.background = "#ef4444";
+
+            if(timeLeft <= 0) {
+                clearInterval(timerInterval);
+                playSound('wrong');
+                highlightCorrectAnswer();
+                setTimeout(() => { currentIndex++; displayQuestion(); }, 1500);
+            }
+        }, 1000);
+    }
+
+    function highlightCorrectAnswer() {
+        document.querySelectorAll(".opt-btn").forEach(b => {
+            b.classList.add("disabled");
+            if(b.innerText === questions[currentIndex].a) b.classList.add("correct");
+        });
+    }
+
+    function displayQuestion() {
+        if (questions.length === 0) {
+            document.getElementById("quizBox").innerHTML = "<p style='text-align:center; color:red;'>No tests found.</p>";
+            return;
+        }
+
+        if(currentIndex >= questions.length) {
+            clearInterval(timerInterval);
+            saveAndShowResults();
+            return;
+        }
+
+        let currentQ = questions[currentIndex];
+        document.getElementById("qCount").innerText = `Question: ${currentIndex + 1}/${questions.length}`;
+        document.getElementById("qText").innerText = currentQ.q;
+
+        const box = document.getElementById("optsBox");
+        box.innerHTML = "";
+
+        currentQ.o.forEach(option => {
+            let btn = document.createElement("button");
+            btn.className = "opt-btn";
+            btn.innerText = option;
+            btn.onclick = () => checkAnswer(btn, option, currentQ.a);
+            box.appendChild(btn);
+        });
+
+        startTimer();
+    }
+
+    function checkAnswer(btn, selected, correct) {
+        clearInterval(timerInterval);
+        document.querySelectorAll(".opt-btn").forEach(b => b.classList.add("disabled"));
+        
+        if(selected === correct) {
+            btn.classList.add("correct");
+            playSound('correct');
+            score++;
+        } else {
+            btn.classList.add("wrong");
+            playSound('wrong');
+            document.querySelectorAll(".opt-btn").forEach(b => {
+                if(b.innerText === correct) b.classList.add("correct");
             });
         }
-    } catch (e) {
-        console.log("Audio xatolik:", e);
+        setTimeout(() => { currentIndex++; displayQuestion(); }, 1200);
     }
-}
+
+    function saveAndShowResults() {
+        let leaderboardData = JSON.parse(localStorage.getItem(`leaderboard_${lessonKey}`)) || [];
+        
+        // Yangi natijada endi ball bilan birga jami ketgan vaqt ham yoziladi
+        leaderboardData.push({ name: playerName, score: score, time: totalTimeSpent });
+        
+        // ADOLATLI SARALASH: 
+        // 1. Birinchi navbatda bali balandlar tepaga chiqadi (b.score - a.score)
+        // 2. Agar ball teng bo'lsa, vaqti kichikroq (tezroq ishlagan) tepaga chiqadi (a.time - b.time)
+        leaderboardData.sort((a, b) => {
+            if (b.score !== a.score) return b.score - a.score;
+            return a.time - b.time;
+        });
+        
+        leaderboardData = leaderboardData.slice(0, 5);
+        localStorage.setItem(`leaderboard_${lessonKey}`, JSON.stringify(leaderboardData));
+
+        playSound('win');
+
+        document.getElementById("quizBox").innerHTML = `
+            <div class="result-screen">
+                <i class="fa-solid fa-trophy" style="font-size: 50px; color: #eab308; margin-bottom: 10px;"></i>
+                <h2>Quiz Completed!</h2>
+                <p>Well done, <b>${playerName}</b>!</p>
+                <p>Score: <b>${score}/${questions.length}</b> | Time: <b>${totalTimeSpent}s</b></p>
+                
+                <div class="leaderboard">
+                    <h3>🏆 Leaderboard (Top 5)</h3>
+                    <div id="leaderboardRows"></div>
+                </div>
+                <button class="primary-btn" style="margin-top:15px; width:100%;" onclick="location.reload()">Try Again</button>
+            </div>`;
+        
+        showLeaderboard();
+    }
+
+    function showLeaderboard() {
+        const rowsBox = document.getElementById("leaderboardRows");
+        let leaderboardData = JSON.parse(localStorage.getItem(`leaderboard_${lessonKey}`)) || [];
+        rowsBox.innerHTML = "";
+        
+        leaderboardData.forEach((player, i) => {
+            let isCurrent = (player.name === playerName && player.score === score && player.time === totalTimeSpent);
+            rowsBox.innerHTML += `
+                <div class="score-row ${isCurrent ? 'current' : ''}">
+                    <span>${i + 1}. ${player.name}</span>
+                    <span>${player.score} pts (${player.time}s)</span>
+                </div>`;
+        });
+    }
+</script>
+</body>
+</html>
