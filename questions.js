@@ -1,9 +1,6 @@
 // Barcha 1000 ta savolni faqat shu yerga yozasiz, index.html esa toza turadi
 const quizDatabase = {
-    "ess1_1": [
-        { q: "What is the translation of 'afraid'?", o: ["qo'rqqan", "xavfsiz", "aqlli", "jahli chiqqan"], a: "qo'rqqan" },
-        { q: "What is the translation of 'agree'?", o: ["va'da bermoq", "rozi bo'lmoq", "hujum qilmoq", "kelmoq"], a: "rozi bo'lmoq" }
-    ],
+   "ess1_1": [{ q: "Which word means 'bad or hurting others'?", o: ["afraid", "clever", "cruel", "hunt"], a: "cruel" }, { q: "Which word means 'at last or at the end'?", o: ["angry", "clever", "finally", "reply"], a: "finally" }, { q: "Which word means 'to try to fight or hurt'?", o: ["attack", "middle", "pleased", "trick"], a: "attack" }, { q: "Which word means 'to not let others see'?", o: ["agree", "hide", "safe", "well"], a: "hide" }, { q: "Which word means 'the lowest part'?", o: ["bottom", "lot", "moment", "promise"], a: "bottom" }, { q: "What is the correct definition for 'angry'?", o: ["happy", "low", "mad", "scared"], a: "mad" }, { q: "What is the correct definition for 'moment'?", o: ["a hole with water in it", "a short time", "at the center", "at the end"], a: "a short time" }, { q: "What is the correct definition for 'promise'?", o: ["to say 'good job'", "to say 'I will'", "to say 'the end'", "to say 'maybe'"], a: "to say 'I will'" }, { q: "What is the correct definition for 'reply'?", o: ["to answer", "to get to a place", "to look for in order to kill", "to try to fight or hurt"], a: "to answer" }, { q: "What is the correct definition for 'safe'?", o: ["fool", "having much or many", "not seen", "not worried about being hurt"], a: "not worried about being hurt" }],
     "ess1_2": [
         { q: "What is the translation of 'angry'?", o: ["badjahl", "hursand", "bexatar", "hiyla"], a: "badjahl" }
     ]
